@@ -8,10 +8,12 @@ class BlogEngine:
     def __init__(self, blog):
         self.conn = sqlite3.connect(f"data/{blog}.db")
 
-    def showConfig(self):
+    def config(self):
         c = self.conn.cursor()
+        config = {}
         for row in c.execute("SELECT * FROM config;"):
-            print(row)
+            config[row[0]] = row[1]
+        return config
 
     def initDB(self,config):
         c = self.conn.cursor()        
@@ -27,10 +29,14 @@ class BlogEngine:
 
     def listMessages(self,showDeleted=False):
         c = self.conn.cursor()
-        stmnt = "SELECT rowid, * FROM messages;" if showDeleted else "SELECT rowid, * FROM messages WHERE deleted = 0;"
-
+        stmnt = "SELECT * FROM messages;" if showDeleted else "SELECT * FROM messages WHERE deleted = 0;"
+        messages = []
         for row in c.execute(stmnt):
             print(row)
+            m = {}
+            m["hash"],m["url"],m["title"],m["summary"],m["content"],m["date_published"],m["date_modified"],m["tags"],m["public"],m["deleted"] = row[0],row[1],row[2],row[3],row[4],row[5],row[6],row[7],row[8],row[9]
+            messages.append(m)
+        return messages
 
     def addMessage(self,message):
         c = self.conn.cursor()
