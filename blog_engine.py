@@ -7,6 +7,20 @@ hashids = Hashids(salt="HideMyIDs",min_length=8,alphabet="abcdefghijklmnopqrstuv
 class BlogEngine:
     def __init__(self, blog):
         self.conn = sqlite3.connect(f"data/{blog}.db")
+    
+    def messageFromRow(self, row):
+        return {
+            "hash"           : row[0],
+            "url"            : row[1],
+            "title"          : row[2],
+            "summary"        : row[3],
+            "content"        : row[4],
+            "date_published" : row[5],
+            "date_modified"  : row[6],
+            "tags"           : row[7],
+            "public"         : row[8],
+            "deleted"        : row[9]
+        }
 
     def config(self):
         c = self.conn.cursor()
@@ -31,10 +45,8 @@ class BlogEngine:
         c = self.conn.cursor()
         stmnt = "SELECT * FROM messages;" if showDeleted else "SELECT * FROM messages WHERE deleted = 0;"
         messages = []
-        for row in c.execute(stmnt):
-            m = {}
-            m["hash"],m["url"],m["title"],m["summary"],m["content"],m["date_published"],m["date_modified"],m["tags"],m["public"],m["deleted"] = row[0],row[1],row[2],row[3],row[4],row[5],row[6],row[7],row[8],row[9]
-            messages.append(m)
+        for row in c.execute(stmnt):            
+            messages.append(self.messageFromRow(row))
         return messages
 
     def addMessage(self,message):
@@ -52,7 +64,7 @@ class BlogEngine:
         newMessage = (newID,url,title,summary, content, curTime, curTime, tags, public)
         c.execute("INSERT INTO messages VALUES (?,?,?,?,?,?,?,?,?,0)",newMessage)
         self.conn.commit()
-        return newMessage
+        return self.getMessage(newID)
 
     def editMessage(self, id, message):
         c = self.conn.cursor()
@@ -69,20 +81,20 @@ class BlogEngine:
             c.execute("UPDATE messages SET public = ? WHERE hash = ?;", (message.get('public'),id))
 
         self.conn.commit()
-        return message
+        return self.getMessage(id)
 
     def getMessage(self, id, showDeleted=False):
         c = self.conn.cursor()
         stmnt = "SELECT * FROM messages WHERE hash = ?;" if showDeleted else "SELECT * FROM messages WHERE hash = ? AND deleted = 0;"
         for row in c.execute(stmnt,(id,)):
-            m = {}
-            m["hash"],m["url"],m["title"],m["summary"],m["content"],m["date_published"],m["date_modified"],m["tags"],m["public"],m["deleted"] = row[0],row[1],row[2],row[3],row[4],row[5],row[6],row[7],row[8],row[9]
-            return m
+            return self.messageFromRow(row)
 
     def deleteMessage(self, id):
         c = self.conn.cursor()
         c.execute("UPDATE messages SET deleted = 1 WHERE hash = ?;",(id,))
         self.conn.commit()
+
+        return self.getMessage(id)
 
 #CLI intended for debug use, otherwise should be called directly by server
 if __name__ == "__main__":

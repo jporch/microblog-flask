@@ -61,7 +61,7 @@ def delete_post(post_id):
 ### Error Handling ###
 @app.errorhandler(400)
 def generic_error(error):
-    return make_response(json.dumps({'error': 'Bad stuff'}), 400)
+    return make_response(json.dumps({'error': 'Bad stuff', 'request': request.json}), 400)
 
 @app.errorhandler(404)
 def not_found(error):
