@@ -4,17 +4,17 @@ from flask import Flask, abort, make_response, request
 app = Flask(__name__)
 
 
-@app.route("/",methods=['GET'])
+@app.route("/musings",methods=['GET'])
 def show_config():
     blog = BlogEngine("test")
     return json.dumps(blog.config(), indent=2)
 
-@app.route("/posts",methods=['GET'])
+@app.route("/musings/posts",methods=['GET'])
 def list_posts():
     blog = BlogEngine("test")
     return json.dumps(blog.listMessages(), indent=2)
 
-@app.route("/posts",methods=['POST'])
+@app.route("/musings/posts",methods=['POST'])
 def new_post():
     data = request.get_json(force=True)
     if not request.data:
@@ -30,12 +30,12 @@ def new_post():
 
     return json.dumps(blog.addMessage(msg), indent=2)
 
-@app.route("/posts/<string:post_id>",methods=['GET'])
+@app.route("/musings/posts/<string:post_id>",methods=['GET'])
 def get_post(post_id):
     blog = BlogEngine("test")
     return json.dumps(blog.getMessage(post_id), indent=2)
 
-@app.route("/posts/<string:post_id>",methods=['PUT'])
+@app.route("/musings/posts/<string:post_id>",methods=['PUT'])
 def update_post(post_id):
     data = request.get_json(force=True)
     if not request.data:
@@ -51,7 +51,7 @@ def update_post(post_id):
 
     return json.dumps(blog.editMessage(post_id,msg), indent=2)
 
-@app.route("/posts/<string:post_id>",methods=['DELETE'])
+@app.route("/musings/posts/<string:post_id>",methods=['DELETE'])
 def delete_post(post_id):
     blog = BlogEngine("test")
     blog.deleteMessage(post_id)
