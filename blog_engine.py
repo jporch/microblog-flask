@@ -32,7 +32,6 @@ class BlogEngine:
         stmnt = "SELECT * FROM messages;" if showDeleted else "SELECT * FROM messages WHERE deleted = 0;"
         messages = []
         for row in c.execute(stmnt):
-            print(row)
             m = {}
             m["hash"],m["url"],m["title"],m["summary"],m["content"],m["date_published"],m["date_modified"],m["tags"],m["public"],m["deleted"] = row[0],row[1],row[2],row[3],row[4],row[5],row[6],row[7],row[8],row[9]
             messages.append(m)
@@ -53,22 +52,36 @@ class BlogEngine:
         newMessage = (newID,url,title,summary, content, curTime, curTime, tags, public)
         c.execute("INSERT INTO messages VALUES (?,?,?,?,?,?,?,?,?,0)",newMessage)
         self.conn.commit()
+        return newMessage
 
     def editMessage(self, id, message):
         c = self.conn.cursor()
-        curTime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        c.execute("UPDATE messages SET content = ?, date_modified = ? WHERE hash = ?;", (message, curTime, id))
+        c.execute("UPDATE messages SET date_modified = ? WHERE hash = ?;", (datetime.now().strftime("%Y-%m-%d %H:%M:%S"),id))
+        if message.get('title'):
+            c.execute("UPDATE messages SET title = ? WHERE hash = ?;", (message.get('title'),id))
+        if message.get('summary'):
+            c.execute("UPDATE messages SET summary = ? WHERE hash = ?;", (message.get('summary'),id))
+        if message.get('content'):
+            c.execute("UPDATE messages SET content = ? WHERE hash = ?;", (message.get('content'),id))
+        if message.get('tags'):
+            c.execute("UPDATE messages SET tags = ? WHERE hash = ?;", (message.get('tags'),id))
+        if message.get('public'):
+            c.execute("UPDATE messages SET public = ? WHERE hash = ?;", (message.get('public'),id))
+
         self.conn.commit()
+        return message
 
     def getMessage(self, id, showDeleted=False):
         c = self.conn.cursor()
-        stmnt = "SELECT rowid, * FROM messages WHERE hash = ?;" if showDeleted else "SELECT rowid, * FROM messages WHERE hash = ? AND deleted = 0;"
-        for row in c.execute(stmnt,id):
-            print(row)
+        stmnt = "SELECT * FROM messages WHERE hash = ?;" if showDeleted else "SELECT * FROM messages WHERE hash = ? AND deleted = 0;"
+        for row in c.execute(stmnt,(id,)):
+            m = {}
+            m["hash"],m["url"],m["title"],m["summary"],m["content"],m["date_published"],m["date_modified"],m["tags"],m["public"],m["deleted"] = row[0],row[1],row[2],row[3],row[4],row[5],row[6],row[7],row[8],row[9]
+            return m
 
     def deleteMessage(self, id):
         c = self.conn.cursor()
-        c.execute("UPDATE messages SET deleted = 1 WHERE hash = ?;",id)
+        c.execute("UPDATE messages SET deleted = 1 WHERE hash = ?;",(id,))
         self.conn.commit()
 
 #CLI intended for debug use, otherwise should be called directly by server
@@ -94,7 +107,7 @@ if __name__ == "__main__":
         blog.initDB(args['init'])
 
     if (args['showConfig']):
-        blog.showConfig()
+        print(blog.config())
 
     if (args['message']):
         msg = {
@@ -107,7 +120,7 @@ if __name__ == "__main__":
         blog.addMessage(msg)
 
     if (args['getMessage']):
-        blog.getMessage(args['getMessage'],args['includeDeleted'])
+        print(blog.getMessage(args['getMessage'],args['includeDeleted']))
 
     if (args['editMessage']):
         blog.editMessage(args['editMessage'][0],args['editMessage'][1])
