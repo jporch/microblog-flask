@@ -3,14 +3,11 @@ from datetime import datetime
 import json
 from hashids import Hashids
 
-config = "data/config.db"
-
 class BlogEngine:
-    def __init__(self):
-        configData = BlogEngine.config()
-        databaseID = configData.get("blog_id","blog")
+    def __init__(self, blogID):
+        configData = BlogEngine.Config(blogID)
         hashSalt = configData.get("id_salt","HashSecretSalt")
-        self.conn = sqlite3.connect(f"data/{databaseID}.db")
+        self.conn = sqlite3.connect(f"data/{blogID}.db")
         self.hashids = Hashids(salt=hashSalt,min_length=8,alphabet="abcdefghijklmnopqrstuvwxyz1234567890")
     
     @staticmethod
@@ -29,9 +26,15 @@ class BlogEngine:
         }
 
     @staticmethod
-    def config():
-        global config
-        c = sqlite3.connect(config).cursor()
+    def Config(blogID):
+        c = sqlite3.connect(f"data/{blogID}.db").cursor()
+        configData = {}
+        for row in c.execute("SELECT * FROM config;"):
+            configData[row[0]] = row[1]
+        return configData
+
+    def config(self):
+        c = self.conn.cursor()
         configData = {}
         for row in c.execute("SELECT * FROM config;"):
             configData[row[0]] = row[1]
@@ -39,17 +42,14 @@ class BlogEngine:
 
     @staticmethod
     def initDB(configJSON="data/blog.json"):
-        global config
         with open(configJSON,'r') as f:
             params = json.load(f)
-        c = sqlite3.connect(config).cursor()
+        blogID = params.get("blog_id","blog")
+        c = sqlite3.connect(f"data/{blogID}.db").cursor()
         c.execute("DROP TABLE IF EXISTS config;")
         c.execute("CREATE TABLE config (param, value);")
         c.executemany("INSERT INTO config VALUES (?,?);",params.items())
-        c.connection.commit()
-        
-        blogDB = params.get("blog_id","blog")
-        c = sqlite3.connect(f"data/{blogDB}.db").cursor()
+
         c.execute("DROP TABLE IF EXISTS messages;")
         c.execute("CREATE TABLE messages (hash text primary key, url unique, title, summary, content, date_published, date_modified, tags, public integer, deleted integer);")
         c.connection.commit()
@@ -68,12 +68,12 @@ class BlogEngine:
         prevID = c.fetchone()[0] or 0
         newID = self.hashids.encode(prevID)
         url =  f"jmporch.com/musings/{newID}"
-        title = message['title']
-        summary = message['summary']
-        content = message['content']
+        title = message.get('title')
+        summary = message.get('summary')
+        content = message.get('content')
         curTime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        tags = message['tags']
-        public = message['public']
+        tags = message.get('tags')
+        public = message.get('public',0)
         newMessage = (newID,url,title,summary, content, curTime, curTime, tags, public)
         c.execute("INSERT INTO messages VALUES (?,?,?,?,?,?,?,?,?,0)",newMessage)
         self.conn.commit()
@@ -113,6 +113,7 @@ class BlogEngine:
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='Lightweight command-line blog framework')
+    parser.add_argument('blogID', help='ID of the blog, which tells it what database to connect to.')
     parser.add_argument('--init', nargs="?", const="data/blog.json", default="", help='Create a new blog or overwrite existing one (cannot be undone).')
     parser.add_argument('--showConfig', nargs="?", const=True, default=False, help="Outputs the blog's configuration values.")
     parser.add_argument('--listMessages', nargs="?", const=True, default=False, help="Outputs the blog's messages.")
@@ -125,31 +126,32 @@ if __name__ == "__main__":
     args = vars(parser.parse_args())
 
     if (args['init']):
+        print(f"Creating blog from {args['init']}.")
         BlogEngine.initDB(args['init'])
 
-    blog = BlogEngine()
+    blog = BlogEngine(args['blogID'])
 
     if (args['showConfig']):
+        print("Blog config:")
         print(blog.config())
 
     if (args['message']):
-        msg = {
-            "title"     : "Testing",
-            "summary"   : "Summary Text",
-            "content"   : args['message'],
-            "tags"      : "tag1,tag2",
-            "public"    : "1"
-        }
-        blog.addMessage(msg)
+        msg = json.loads(args['message'])
+        print("Added new message:")
+        print(blog.addMessage(msg))
 
     if (args['getMessage']):
+        print(f"Retrieving message {args['getMessage']}:")
         print(blog.getMessage(args['getMessage'],args['includeDeleted']))
 
     if (args['editMessage']):
-        blog.editMessage(args['editMessage'][0],args['editMessage'][1])
+        print(f"Edited message {args['editMessage']}:")
+        print(blog.editMessage(args['editMessage'][0],args['editMessage'][1]))
 
     if (args['listMessages']):
-        blog.listMessages(args['includeDeleted'])
+        print("List of all messages:")
+        print(blog.listMessages(args['includeDeleted']))
 
     if (args['deleteMessage']):
-        blog.deleteMessage(args['deleteMessage'])
+        print("Deleted message:")
+        print(blog.deleteMessage(args['deleteMessage']))

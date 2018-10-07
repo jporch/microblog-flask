@@ -3,17 +3,20 @@ import json
 from flask import Flask, abort, make_response, request
 app = Flask(__name__)
 
-blogConfig = BlogEngine.config()
+with open("data/server.json",'r') as f:
+    serverConfig = json.load(f)
+
+
+blogConfig = BlogEngine.Config(serverConfig.get("blog_id","blog"))
 route = "/"+blogConfig.get("blog_path")
-print(route)
 @app.route(route+"/config",methods=['GET'])
 def show_config():
-    blog = BlogEngine()
+    blog = BlogEngine(serverConfig.get("blog_id","blog"))
     return json.dumps(blog.config(), indent=2)
 
 @app.route(route,methods=['GET'])
 def list_posts():
-    blog = BlogEngine()
+    blog = BlogEngine(serverConfig.get("blog_id","blog"))
     return json.dumps(blog.listMessages(), indent=2)
 
 @app.route(route,methods=['POST'])
@@ -21,7 +24,7 @@ def new_post():
     data = request.get_json(force=True)
     if not request.data:
         abort(400)
-    blog = BlogEngine()
+    blog = BlogEngine(serverConfig.get("blog_id","blog"))
     msg = {
         "title"   : data.get('title',"No Title"),
         "summary" : data.get('summary',""),
@@ -34,7 +37,7 @@ def new_post():
 
 @app.route(route+"/<string:post_id>",methods=['GET'])
 def get_post(post_id):
-    blog = BlogEngine()
+    blog = BlogEngine(serverConfig.get("blog_id","blog"))
     return json.dumps(blog.getMessage(post_id), indent=2)
 
 @app.route(route+"/<string:post_id>",methods=['PUT'])
@@ -42,7 +45,7 @@ def update_post(post_id):
     data = request.get_json(force=True)
     if not request.data:
         abort(400)
-    blog = BlogEngine()
+    blog = BlogEngine(serverConfig.get("blog_id","blog"))
     msg = {
         "title"   : data.get('title',None),
         "summary" : data.get('summary',None),
@@ -55,7 +58,7 @@ def update_post(post_id):
 
 @app.route(route+"/<string:post_id>",methods=['DELETE'])
 def delete_post(post_id):
-    blog = BlogEngine()
+    blog = BlogEngine(serverConfig.get("blog_id","blog"))
     blog.deleteMessage(post_id)
     return json.dumps({"Deleted":post_id})
 
