@@ -8,7 +8,7 @@ app = Flask(__name__)
 with open("data/server.json",'r') as f:
     serverConfig = json.load(f)
 
-# Hashing code based of Troy Hunner's examples at https://www.pythoncentral.io/hashing-strings-with-python/
+# Hashing code based of Andres Torres's examples at https://www.pythoncentral.io/hashing-strings-with-python/
 def hash_token(token):
     salt = uuid.uuid4().hex
     return hashlib.sha256(salt.encode() + token.encode()).hexdigest() + ':' + salt
@@ -19,16 +19,18 @@ def check_token(hashedToken, userToken):
     token, salt = hashedToken.split(':')
     return token == hashlib.sha256(salt.encode() + userToken.encode()).hexdigest()
 
-blogConfig = BlogEngine.Config(serverConfig.get("blog_id","blog"))
-route = "/"+blogConfig.get("blog_path")
 def get_login(request):
     data = request.headers
     login = False
-    if data.get("token"):
+    if data.get("Authorization"):
         for t in range(len(serverConfig["tokens"])):
-            if check_token(serverConfig["tokens"][t],data["token"]):
+            if check_token(serverConfig["tokens"][t],data["Authorization"]):
                 login = True
     return login
+
+blogConfig = BlogEngine.Config(serverConfig.get("blog_id","blog"))
+route = "/"+blogConfig.get("blog_path")
+
 @app.route(route+"/config",methods=['GET'])
 def show_config():
     blog = BlogEngine(serverConfig.get("blog_id","blog"))
