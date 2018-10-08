@@ -41,7 +41,7 @@ class BlogEngine:
         return configData
 
     @staticmethod
-    def initDB(configJSON="data/blog.json"):
+    def InitDB(configJSON="data/blog.json"):
         with open(configJSON,'r') as f:
             params = json.load(f)
         blogID = params.get("blog_id","blog")
@@ -54,9 +54,11 @@ class BlogEngine:
         c.execute("CREATE TABLE messages (hash text primary key, url unique, title, summary, content, date_published, date_modified, tags, public integer, deleted integer);")
         c.connection.commit()
 
-    def listMessages(self,showDeleted=False):
+    def listMessages(self,showPrivate=False,showDeleted=False):
         c = self.conn.cursor()
-        stmnt = "SELECT * FROM messages;" if showDeleted else "SELECT * FROM messages WHERE deleted = 0;"
+        priv = "1" if showPrivate else "public = 1"
+        deleted = "1" if showDeleted else "deleted = 0"
+        stmnt = f"SELECT * FROM messages WHERE {priv} AND {deleted};"
         messages = []
         for row in c.execute(stmnt):            
             messages.append(BlogEngine.messageFromRow(row))
@@ -96,9 +98,11 @@ class BlogEngine:
         self.conn.commit()
         return self.getMessage(id)
 
-    def getMessage(self, id, showDeleted=False):
+    def getMessage(self, id, showPrivate=False,showDeleted=False):
         c = self.conn.cursor()
-        stmnt = "SELECT * FROM messages WHERE hash = ?;" if showDeleted else "SELECT * FROM messages WHERE hash = ? AND deleted = 0;"
+        priv = "1" if showPrivate else "public = 1"
+        deleted = "1" if showDeleted else "deleted = 0"
+        stmnt = f"SELECT * FROM messages WHERE hash = ? AND {priv} AND {deleted};"
         for row in c.execute(stmnt,(id,)):
             return BlogEngine.messageFromRow(row)
 
@@ -127,7 +131,7 @@ if __name__ == "__main__":
 
     if (args['init']):
         print(f"Creating blog from {args['init']}.")
-        BlogEngine.initDB(args['init'])
+        BlogEngine.InitDB(args['init'])
 
     blog = BlogEngine(args['blogID'])
 
